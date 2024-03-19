@@ -6,7 +6,13 @@ import com.google.common.graph.ImmutableValueGraph;
 import com.google.common.graph.ValueGraph;
 import com.google.common.graph.ValueGraphBuilder;
 
-import org.apache.commons.math3.linear.*;
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.ArrayRealVector;
+import org.apache.commons.math3.linear.DecompositionSolver;
+import org.apache.commons.math3.linear.LUDecomposition;
+import org.apache.commons.math3.linear.MatrixUtils;
+import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.linear.RealVector;
 
 public class PageRank {
     static final double default_alpha = 0.85;
@@ -16,38 +22,51 @@ public class PageRank {
     final double alpha; // damping factor
     final double tolerance; // condition for convergence
     final int max_iter; // max iterations to execute
-    final int N; // total num of nodes
-    List<Double> ranks;
-    List<Double> teleports; // E vector for teleportation
-    final ImmutableValueGraph<Integer, Double> graph;
 
-    public PageRank(ValueGraph<Integer, Double> graph)  {
-        this(graph, default_alpha, default_tolerance, default_max_iter);
+    public PageRank() {
+        this(default_alpha, default_tolerance, default_max_iter);
     }
 
-    public PageRank(ValueGraph<Integer, Double> graph, double alpha, double tolerance, int max_iter) {
+    public PageRank(double alpha, double tolerance, int max_iter) {
         this.alpha = alpha;
         this.max_iter = max_iter;
         this.tolerance = tolerance;
-        this.graph = (ImmutableValueGraph<Integer, Double>) graph;
-        this.N = this.graph.nodes().size();
-        this.ranks = new ArrayList<>();
-        this.teleports = new ArrayList<>();
-        for (int i = 0; i < N; ++i) {
-            ranks.add((double)1 / N);
-            teleports.add((double)1 / N); // assign uniform 1/N for E
-        }
     }
 
     /**
      * Calculate page rank in an iterative manner,
      * running until converge or reach max_iter.
-     * @return calculated page rank
+     * Uniform teleportation matrix is used.
+     *
+     * @param graph Graph to calculate
+     * @return page rank
      */
-    public double[] iteratePageRank() {
+    public double[] iteratePageRank(ValueGraph<Integer, Double> graph) {
+        final int N = graph.nodes().size();
+        List<Double> teleports = new ArrayList<>();
+        for (int i = 0; i < N; ++i) {
+            teleports.add((double) 1 / N); // assign uniform 1/N for E
+        }
+        return iteratePageRank(graph, teleports);
+    }
+
+    /**
+     * Calculate page rank in an iterative manner,
+     * running until converge or reach max_iter.
+     *
+     * @param graph     Graph to calculate
+     * @param teleports teleportation vector E
+     * @return page rank
+     */
+    public double[] iteratePageRank(ValueGraph<Integer, Double> graph, List<Double> teleports) {
+        int N = graph.nodes().size();
+        List<Double> ranks = new ArrayList<>();
+        for (int i = 0; i < N; ++i) {
+            ranks.add((double) 1 / N);
+        }
         for (int it = 0; it < max_iter; ++it) {
-            List<Double> new_ranks = getNewRanks();
-            if (hasConverged(new_ranks)) {
+            List<Double> new_ranks = getNewRanks(graph, ranks, teleports);
+            if (hasConverged(ranks, new_ranks)) {
                 break;
             }
             ranks = new_ranks;
@@ -55,7 +74,8 @@ public class PageRank {
         return ranks.stream().mapToDouble(Double::doubleValue).toArray();
     }
 
-    private List<Double> getNewRanks() {
+    private List<Double> getNewRanks(ValueGraph<Integer, Double> graph, List<Double> ranks, List<Double> teleports) {
+        int N = ranks.size();
         List<Double> new_ranks = new ArrayList<>(ranks);
         for (int i = 0; i < N; ++i) {
             double rank = 0.0;
@@ -74,9 +94,9 @@ public class PageRank {
         return new_ranks;
     }
 
-    private boolean hasConverged(List<Double> new_ranks) {
+    private boolean hasConverged(List<Double> ranks, List<Double> new_ranks) {
         boolean converged = true;
-        for (int i = 0; i < N; ++i) {
+        for (int i = 0; i < ranks.size(); ++i) {
             if (Math.abs(new_ranks.get(i) - ranks.get(i)) > tolerance) {
                 converged = false;
                 break;
@@ -87,11 +107,31 @@ public class PageRank {
 
     /**
      * Solve page rank by linear algebra.
-     * @return solved page rank
+     * Uniform teleportation vector E is used.
+     *
+     * @param graph Graph to calculate
+     * @return page rank
      */
-    public double[] solvePageRank() {
+    public double[] solvePageRank(ValueGraph<Integer, Double> graph) {
+        final int N = graph.nodes().size();
+        List<Double> teleports = new ArrayList<>();
+        for (int i = 0; i < N; ++i) {
+            teleports.add((double) 1 / N); // assign uniform 1/N for E
+        }
+        return solvePageRank(graph, teleports);
+    }
+
+    /**
+     * Solve Page Rank by linear algebra
+     *
+     * @param graph     Graph to calculate
+     * @param teleports Teleportation vector E
+     * @return page rank
+     */
+    public double[] solvePageRank(ValueGraph<Integer, Double> graph, List<Double> teleports) {
+        final int N = graph.nodes().size();
         // create teleportation vector E[N]
-        double [] tele_arr = teleports.stream().mapToDouble(Double::doubleValue).toArray();
+        double[] tele_arr = teleports.stream().mapToDouble(Double::doubleValue).toArray();
         RealVector E = new ArrayRealVector(tele_arr);
 
         // create graph matrix M[N][N]
@@ -111,15 +151,16 @@ public class PageRank {
 
     /**
      * A generalized linear algebra solution to page rank
-     * @param M Graph Matrix, dimension NxN
-     * @param E Teleportation Vector, dimension N
+     *
+     * @param M     Graph Matrix, dimension NxN
+     * @param E     Teleportation Vector, dimension N
      * @param alpha Damping factor
      * @return Solved page rank
      */
     public static RealVector solve(RealMatrix M, RealVector E, double alpha) {
-        assert(M.getColumnDimension() == M.getRowDimension());
-        assert(M.getColumnDimension() == E.getDimension());
-        assert(alpha > 0 && alpha < 1);
+        assert (M.getColumnDimension() == M.getRowDimension());
+        assert (M.getColumnDimension() == E.getDimension());
+        assert (alpha > 0 && alpha < 1);
         // dimension M[N][N], E[N]
         int N = M.getColumnDimension();
         // create Identity Matrix[N][N]
@@ -148,15 +189,15 @@ public class PageRank {
                 .putEdgeValue(2, 2, 1.0)
                 .build();
 
-        final PageRank pr = new PageRank(graph);
-        double[] ranks = pr.solvePageRank();
+        final PageRank pr = new PageRank();
+        double[] ranks = pr.solvePageRank(graph);
         System.out.println("Linear system solution: ");
         for (final double val : ranks) {
             System.out.printf("\t%.2f", val);
         }
         System.out.println();
         System.out.println("Iterative solution: ");
-        ranks = pr.iteratePageRank();
+        ranks = pr.iteratePageRank(graph);
         for (final double val : ranks) {
             System.out.printf("\t%.2f", val);
         }
