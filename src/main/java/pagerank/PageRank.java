@@ -59,50 +59,42 @@ public class PageRank {
      * @return page rank
      */
     public double[] iteratePageRank(ValueGraph<Integer, Double> graph, List<Double> teleports) {
-        int N = graph.nodes().size();
-        List<Double> ranks = new ArrayList<>();
-        for (int i = 0; i < N; ++i) {
-            ranks.add((double) 1 / N);
-        }
+        final int N = graph.nodes().size();
+
+        RealVector tele = list2vector(teleports);
+        RealVector ranks = new ArrayRealVector(N, 1.0 / N);
         for (int it = 0; it < max_iter; ++it) {
-            List<Double> new_ranks = getNewRanks(graph, ranks, teleports);
+            RealVector new_ranks = getNewRanks(graph, ranks, tele);
             if (hasConverged(ranks, new_ranks)) {
                 break;
             }
             ranks = new_ranks;
         }
-        return ranks.stream().mapToDouble(Double::doubleValue).toArray();
+        return ranks.toArray();
     }
 
-    private List<Double> getNewRanks(ValueGraph<Integer, Double> graph, List<Double> ranks, List<Double> teleports) {
-        int N = ranks.size();
-        List<Double> new_ranks = new ArrayList<>(ranks);
+    private RealVector getNewRanks(ValueGraph<Integer, Double> graph, RealVector ranks, RealVector teleports) {
+        int N = ranks.getDimension();
+        RealVector new_ranks = new ArrayRealVector(N);
         for (int i = 0; i < N; ++i) {
             double rank = 0.0;
             for (int j = 0; j < N; ++j) {
                 Optional<Double> val = graph.edgeValue(j, i);
                 if (val.isPresent()) {
-                    rank += ranks.get(j) / graph.outDegree(j);
+                    rank += ranks.getEntry(j) / graph.outDegree(j);
                 }
             }
-            rank = alpha * rank + (1 - alpha) * teleports.get(i);
-            new_ranks.set(i, rank);
+            rank = alpha * rank + (1 - alpha) * teleports.getEntry(i);
+            new_ranks.setEntry(i, rank);
         }
         // Normalize the new ranks
-        double total = new_ranks.stream().mapToDouble(Double::doubleValue).sum();
-        new_ranks.replaceAll(val -> val / total);
-        return new_ranks;
+        double sum = new_ranks.getL1Norm();
+        return new_ranks.mapDivide(sum);
     }
 
-    private boolean hasConverged(List<Double> ranks, List<Double> new_ranks) {
-        boolean converged = true;
-        for (int i = 0; i < ranks.size(); ++i) {
-            if (Math.abs(new_ranks.get(i) - ranks.get(i)) > tolerance) {
-                converged = false;
-                break;
-            }
-        }
-        return converged;
+    private boolean hasConverged(RealVector ranks, RealVector new_ranks) {
+        assert (ranks.getDimension() == new_ranks.getDimension());
+        return ranks.subtract(new_ranks).getL1Norm() < tolerance;
     }
 
     /**
@@ -129,21 +121,11 @@ public class PageRank {
      * @return page rank
      */
     public double[] solvePageRank(ValueGraph<Integer, Double> graph, List<Double> teleports) {
-        final int N = graph.nodes().size();
         // create teleportation vector E[N]
-        double[] tele_arr = teleports.stream().mapToDouble(Double::doubleValue).toArray();
-        RealVector E = new ArrayRealVector(tele_arr);
+        RealVector E = list2vector(teleports);
 
         // create graph matrix M[N][N]
-        RealMatrix M = new Array2DRowRealMatrix(N, N);
-        for (int i = 0; i < N; ++i) {
-            for (int j = 0; j < N; ++j) {
-                Optional<Double> val = graph.edgeValue(i, j);
-                if (val.isPresent()) {
-                    M.setEntry(j, i, (double) 1 / graph.outDegree(i));
-                }
-            }
-        }
+        RealMatrix M = graph2matrix(graph);
 
         RealVector R = solve(M, E, alpha);
         return R.toArray();
@@ -175,6 +157,24 @@ public class PageRank {
         // Solve
         DecompositionSolver solver = new LUDecomposition(A).getSolver();
         return solver.solve(b);
+    }
+
+    public static RealMatrix graph2matrix(ValueGraph<Integer, Double> graph) {
+        final int N = graph.nodes().size();
+        RealMatrix M = new Array2DRowRealMatrix(N, N);
+        for (int i = 0; i < N; ++i) {
+            for (int j = 0; j < N; ++j) {
+                Optional<Double> val = graph.edgeValue(i, j);
+                if (val.isPresent()) {
+                    M.setEntry(j, i, (double) 1 / graph.outDegree(i));
+                }
+            }
+        }
+        return M;
+    }
+
+    public static RealVector list2vector(List<Double> list) {
+        return new ArrayRealVector(list.stream().mapToDouble(Double::doubleValue).toArray());
     }
 
     public static void main(String[] args) {
