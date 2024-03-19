@@ -1,6 +1,8 @@
 .idea
 .vscode
 
+data
+
 .DS_Store
 .cache
 
