@@ -12,8 +12,8 @@ public class IterativePageRank extends PageRank {
         super();
     }
 
-    public IterativePageRank(double alpha, double tolerance, int max_iter) {
-        super(alpha, tolerance, max_iter);
+    public IterativePageRank(double d, double tolerance, int max_iter) {
+        super(d, tolerance, max_iter);
     }
 
     @Override
@@ -43,7 +43,7 @@ public class IterativePageRank extends PageRank {
                     rank += ranks.getEntry(j) / graph.outDegree(j);
                 }
             }
-            rank = alpha * rank + (1 - alpha) * teleports.getEntry(i);
+            rank = d * rank + (1 - d) * teleports.getEntry(i);
             new_ranks.setEntry(i, rank);
         }
         // Normalize the new ranks

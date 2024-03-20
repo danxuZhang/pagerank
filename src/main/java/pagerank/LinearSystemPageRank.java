@@ -16,8 +16,8 @@ public class LinearSystemPageRank extends PageRank {
         super();
     }
 
-    public LinearSystemPageRank(double alpha, double tolerance, int max_iter) {
-        super(alpha, tolerance, max_iter);
+    public LinearSystemPageRank(double d, double tolerance, int max_iter) {
+        super(d, tolerance, max_iter);
     }
 
     /**
@@ -25,23 +25,23 @@ public class LinearSystemPageRank extends PageRank {
      *
      * @param M     Graph Matrix, dimension NxN
      * @param E     Teleportation Vector, dimension N
-     * @param alpha Damping factor
+     * @param d     Damping factor
      * @return Solved page rank
      */
-    public static RealVector solve(RealMatrix M, RealVector E, double alpha) {
+    public static RealVector solve(RealMatrix M, RealVector E, double d) {
         assert (M.getColumnDimension() == M.getRowDimension());
         assert (M.getColumnDimension() == E.getDimension());
-        assert (alpha > 0 && alpha < 1);
+        assert (d > 0 && d < 1);
         // dimension M[N][N], E[N]
         int N = M.getColumnDimension();
         // create Identity Matrix[N][N]
         RealMatrix I = MatrixUtils.createRealIdentityMatrix(N);
 
-        // Compute the matrix (I - alpha x M)
-        RealMatrix A = I.subtract(M.scalarMultiply(alpha));
+        // Compute the matrix (I - d x M)
+        RealMatrix A = I.subtract(M.scalarMultiply(d));
 
-        // Compute the vector (1-alpha)E
-        RealVector b = E.mapMultiply(1 - alpha);
+        // Compute the vector (1-d)E
+        RealVector b = E.mapMultiply(1 - d);
 
         // Solve
         DecompositionSolver solver = new LUDecomposition(A).getSolver();
@@ -77,7 +77,7 @@ public class LinearSystemPageRank extends PageRank {
         // create graph matrix M[N][N]
         RealMatrix M = graph2matrix(graph);
 
-        RealVector R = solve(M, E, alpha);
+        RealVector R = solve(M, E, d);
         return R.toArray();
     }
 }

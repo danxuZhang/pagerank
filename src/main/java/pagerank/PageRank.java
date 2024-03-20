@@ -11,19 +11,19 @@ import java.util.List;
 import java.util.Optional;
 
 public abstract class PageRank {
-    static final double default_alpha = 0.85;
+    static final double default_d = 0.85;
     static final double default_tolerance = 0.000_1;
     static final int default_max_iter = 1_000;
-    final double alpha;
+    final double d;
     final double tolerance;
     final int max_iter;
 
     public PageRank() {
-        this(default_alpha, default_tolerance, default_max_iter);
+        this(default_d, default_tolerance, default_max_iter);
     }
 
-    public PageRank(double alpha, double tolerance, int max_iter) {
-        this.alpha = alpha;
+    public PageRank(double d, double tolerance, int max_iter) {
+        this.d = d;
         this.tolerance = tolerance;
         this.max_iter = max_iter;
     }
