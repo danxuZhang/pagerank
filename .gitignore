@@ -1,3 +1,12 @@
+.DS_Store
+.cache
+
+build/
+cmake-build-*
+tags
+
+compile_commands.json
+
 # Prerequisites
 *.d
 
