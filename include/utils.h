@@ -1,8 +1,16 @@
 #pragma once
 
 #include <fstream>
+#include <string>
 
 namespace pagerank {
+
+inline auto ParseEdge(std::string_view line) -> std::pair<int, int> {
+  const auto pos = line.find_first_of(' ');
+  const auto src = std::stoi(std::string(line.substr(0, pos)));
+  const auto dst = std::stoi(std::string(line.substr(pos + 1)));
+  return {src, dst};
+}
 
 class FileLineIterator {
  public:
@@ -22,6 +30,6 @@ class FileLineIterator {
   char comment_char_;
 
   auto ReadNextLine() -> void;
-};
+};  // class FileLineIterator
 
 }  // namespace pagerank
