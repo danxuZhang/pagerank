@@ -6,6 +6,10 @@
 
 namespace pagerank {
 
+/**
+ * Dummy implementation of PageRank.
+ * Returns a vector of size n with all elements equal to 1/n.
+ */
 auto PageRank(std::string_view path, double d [[maybe_unused]],
               double eps [[maybe_unused]]) -> std::vector<double> {
   FileLineIterator file((std::string(path)));

@@ -9,7 +9,7 @@
 #endif
 
 #ifndef EPSILON
-#define EPSILON 1e-6
+#define EPSILON 1e-12
 #endif
 
 int main(int argc, char *argv[]) {

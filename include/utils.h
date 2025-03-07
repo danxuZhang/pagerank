@@ -22,6 +22,7 @@ class FileLineIterator {
   auto HasNext() const -> bool;
   auto Next() -> void;
   auto Get() const -> const std::string&;
+  auto Reset() -> void;
 
  private:
   std::ifstream file_;

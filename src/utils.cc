@@ -23,6 +23,12 @@ auto FileLineIterator::Get() const -> const std::string& {
   return current_line_;
 }
 
+auto FileLineIterator::Reset() -> void {
+  file_.clear();
+  file_.seekg(0);
+  ReadNextLine();
+}
+
 auto FileLineIterator::ReadNextLine() -> void {
   has_next_line_ = false;
   while (std::getline(file_, current_line_)) {
